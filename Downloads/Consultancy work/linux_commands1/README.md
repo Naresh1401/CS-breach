@@ -1,3 +1,3 @@
 # Basic Linux Commands Cheat Sheet
 
-1. **pwd** - 
+1. **pwd** -
