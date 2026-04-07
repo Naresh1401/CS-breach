@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Custom properties ─────────────────────────────────────── */
+:root {
+  --bg:          #020817;
+  --card:        #0f172a;
+  --card-light:  #1e293b;
+  --border:      #1e2d45;
+  --cyber:       #06b6d4;
+  --cyber-dim:   #164e63;
+  --text:        #e2e8f0;
+  --muted:       #64748b;
+}
+
+/* ─── Base ─────────────────────────────────────────────────── */
+@layer base {
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    @apply antialiased;
+  }
+
+  /* Thin scrollbar */
+  ::-webkit-scrollbar              { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track        { background: #0a0f1e; }
+  ::-webkit-scrollbar-thumb        { background: #1e3a5f; border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover  { background: #06b6d4; }
+}
+
+/* ─── Utilities ─────────────────────────────────────────────── */
+@layer utilities {
+  /* Dot-grid background */
+  .bg-grid {
+    background-image:
+      radial-gradient(circle, rgba(6,182,212,0.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  /* Cyber line background */
+  .bg-lines {
+    background-image:
+      linear-gradient(rgba(6,182,212,0.04) 1px, transparent 1px),
+      linear-gradient(to right, rgba(6,182,212,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Glow shadows */
+  .glow-cyan { box-shadow: 0 0 20px rgba(6,182,212,0.25), 0 0 40px rgba(6,182,212,0.08); }
+  .glow-red  { box-shadow: 0 0 16px rgba(239,68,68,0.25); }
+
+  /* Scan-line overlay (use on wrapping element) */
+  .scan-overlay {
+    position: relative;
+    overflow: hidden;
+  }
+  .scan-overlay::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, #06b6d4, transparent);
+    animation: scan-line 1.8s linear infinite;
+    pointer-events: none;
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    background: linear-gradient(90deg, #0f172a 25%, #1e293b 50%, #0f172a 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* Neon text helpers */
+  .text-cyber { color: #06b6d4; }
+  .text-neon  {
+    color: #06b6d4;
+    text-shadow: 0 0 12px rgba(6,182,212,0.55);
+  }
+}
+
+/* ─── Raw keyframes (referenced by tailwind AND CSS) ───────── */
+@keyframes scan-line {
+  0%   { top: 0%;   opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1;   }
+  50%       { opacity: 0.3; }
+}
+
+/* ─── CSS-variable-driven helpers (avoid inline style linting) ─ */
+/* Usage: style={{ "--bar-width": "60%" } as React.CSSProperties} */
+.bar-progress { width: var(--bar-width, 0%); }
+.drift-fill   { width: var(--drift-width, 0%); background-color: var(--drift-color, #06b6d4); }
+.color-swatch { background-color: var(--swatch-color, transparent); }
+.anim-delay   { animation-delay: var(--anim-delay, 0ms); }
+

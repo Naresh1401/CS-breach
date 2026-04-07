@@ -1,0 +1,9 @@
+[project]
+name = "cybersecurity-ni"
+version = "0.1.0"
+description = "AI-powered cybersecurity governance system detecting human-state drift patterns"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
