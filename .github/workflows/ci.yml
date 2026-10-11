@@ -23,10 +23,7 @@ jobs:
         include:
           - directory: CS breach/DriftGuard/backend
             python-version: '3.11'
-            # This copy's tests no longer match its code (20 of 24 fail on renamed functions,
-            # missing routes and fields), so only the lint runs here. The DriftGuard repo runs
-            # the maintained test suite.
-            test-command: echo "::notice::Tests skipped; this copy of DriftGuard is out of sync with its tests."
+            test-command: ''
           - directory: Cybersecurity/backend
             python-version: '3.11'
             # tests/test_e2e.py is a script for a running API, not a pytest suite;
@@ -45,8 +42,7 @@ jobs:
       matrix:
         include:
           - directory: CS breach/DriftGuard/frontend
-            # The lint script has no ESLint config yet (ESLint 9 needs eslint.config.js)
-            lint-command: ''
+            lint-command: auto
           - directory: Cybersecurity/frontend
             lint-command: auto
     uses: Naresh1401/github-cicd-workflows/.github/workflows/node-ci.yml@v1
