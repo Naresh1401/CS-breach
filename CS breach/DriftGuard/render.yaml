@@ -1,0 +1,21 @@
+services:
+  # ─── Full-Stack (Backend API + Frontend SPA) ───────
+  - type: web
+    name: driftguard-api
+    runtime: python
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build && cd ../backend && pip install -r requirements-deploy.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./driftguard.db
+      - key: CORS_ORIGINS
+        value: https://driftguard-api-mbdj.onrender.com
+      - key: PYTHON_VERSION
+        value: 3.11.6
+      - key: NODE_VERSION
+        value: 20.11.0

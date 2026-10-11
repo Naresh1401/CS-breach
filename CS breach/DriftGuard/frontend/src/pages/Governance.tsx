@@ -3,7 +3,7 @@ import { api } from '../api'
 import { useAuth } from '../auth'
 import { LoadingSpinner, EmptyState } from '../components/Shared'
 import type { GovernanceAction } from '../types'
-import { Shield, CheckCircle, XCircle, Clock, FileText } from 'lucide-react'
+import { Shield, CheckCircle, XCircle, Clock, FileText, Lock } from 'lucide-react'
 import clsx from 'clsx'
 
 const GATE_LABELS: Record<string, string> = {
@@ -48,29 +48,77 @@ const DEMO_AUDIT = [
 ]
 
 export default function Governance() {
-  const { role } = useAuth()
+  const { can } = useAuth()
   const [actions, setActions] = useState<GovernanceAction[]>(DEMO_ACTIONS)
-  const [loading, setLoading] = useState(false)
+  const [auditLog, setAuditLog] = useState<Array<{ timestamp: string; action: string; actor: string | null; details: string | Record<string, unknown> }>>(DEMO_AUDIT)
+  const [loading, setLoading] = useState(true)
+  const [acting, setActing] = useState<string | null>(null)
   const [tab, setTab] = useState<'gates' | 'audit'>('gates')
+  const [error, setError] = useState<string | null>(null)
+
+  const loadActions = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await api.getPendingActions()
+      setActions(data)
+    } catch { setError('Failed to load governance actions.') }
+    finally { setLoading(false) }
+  }
+
+  const loadAudit = async () => {
+    try {
+      const data = await api.getAuditLog()
+      if (data?.entries?.length) setAuditLog(data.entries)
+    } catch { /* audit log non-critical */ }
+  }
 
   useEffect(() => {
-    let cancelled = false
-    async function load() {
-      setLoading(true)
-      try {
-        const data = await api.getPendingActions()
-        if (!cancelled) setActions(data)
-      } catch { /* demo */ }
-      finally { if (!cancelled) setLoading(false) }
-    }
-    load()
-    return () => { cancelled = true }
+    loadActions()
+    loadAudit()
   }, [])
+
+  const handleApprove = async (action: GovernanceAction) => {
+    setActing(action.action_id)
+    try {
+      await api.approveGovernanceAction(action.gate_type, action.action_id)
+      setActions(prev => prev.map(a => a.action_id === action.action_id
+        ? { ...a, status: 'approved', reviewed_at: new Date().toISOString(), reviewer: 'Current User' } : a))
+      loadAudit()
+    } catch { /* keep current state */ }
+    finally { setActing(null) }
+  }
+
+  const handleReject = async (action: GovernanceAction) => {
+    setActing(action.action_id)
+    try {
+      await api.rejectGovernanceAction(action.gate_type, action.action_id)
+      setActions(prev => prev.map(a => a.action_id === action.action_id
+        ? { ...a, status: 'rejected', reviewed_at: new Date().toISOString(), reviewer: 'Current User' } : a))
+      loadAudit()
+    } catch { /* keep current state */ }
+    finally { setActing(null) }
+  }
+
+  if (!can('view_governance')) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <Lock size={48} className="mb-4" />
+        <h2 className="text-lg font-semibold text-gray-600">Access Restricted</h2>
+        <p className="text-sm mt-1">Governance requires Compliance Officer, NI Architect, CISO, or Administrator access.</p>
+      </div>
+    )
+  }
 
   if (loading) return <LoadingSpinner />
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+          {error}
+        </div>
+      )}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Governance</h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -132,12 +180,14 @@ export default function Governance() {
                       .join(' · ')}
                   </p>
                 </div>
-                {action.status === 'pending' && (role === 'ciso' || role === 'ni_architect' || role === 'admin') && (
+                {action.status === 'pending' && can('approve_governance') && (
                   <div className="mt-3 flex gap-2">
-                    <button className="btn-primary text-xs flex items-center gap-1">
-                      <CheckCircle size={14} /> Approve
+                    <button onClick={() => handleApprove(action)} disabled={acting === action.action_id}
+                      className="btn-primary text-xs flex items-center gap-1">
+                      <CheckCircle size={14} /> {acting === action.action_id ? 'Processing…' : 'Approve'}
                     </button>
-                    <button className="btn-secondary text-xs flex items-center gap-1 text-red-600">
+                    <button onClick={() => handleReject(action)} disabled={acting === action.action_id}
+                      className="btn-secondary text-xs flex items-center gap-1 text-red-600">
                       <XCircle size={14} /> Reject
                     </button>
                   </div>
@@ -152,14 +202,16 @@ export default function Governance() {
             Immutable Audit Log
           </div>
           <div className="divide-y divide-gray-100">
-            {DEMO_AUDIT.map((entry, i) => (
-              <div key={i} className="py-3 flex items-start gap-4">
-                <div className="text-xs text-gray-400 whitespace-nowrap w-40">
+            {auditLog.map((entry, i) => (
+              <div key={i} className="py-3 flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
+                <div className="text-xs text-gray-400 whitespace-nowrap sm:w-40">
                   {new Date(entry.timestamp).toLocaleString()}
                 </div>
-                <div className="text-xs font-medium text-gray-700 w-32">{entry.action}</div>
-                <div className="text-xs text-gray-500 w-20">{entry.actor}</div>
-                <div className="text-xs text-gray-600 flex-1">{entry.details}</div>
+                <div className="flex items-center gap-2 sm:contents">
+                  <div className="text-xs font-medium text-gray-700 sm:w-32">{entry.action}</div>
+                  <div className="text-xs text-gray-500 sm:w-20">{entry.actor}</div>
+                </div>
+                <div className="text-xs text-gray-600 flex-1">{typeof entry.details === 'string' ? entry.details : JSON.stringify(entry.details)}</div>
               </div>
             ))}
           </div>

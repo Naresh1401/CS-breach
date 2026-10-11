@@ -1,33 +1,80 @@
-# DriftGuard — Human-State Drift Detection System
+# DriftGuard
 
-> **Organizational behavioral drift detection for cybersecurity.** DriftGuard identifies systemic patterns — fatigue, overconfidence, hurry, quiet fear, hoarding, and compliance theater — that precede security breaches. It detects organizational conditions, never individual behavior.
+**Human-state drift detection for cybersecurity.** DriftGuard detects the organizational behavioral patterns — fatigue, overconfidence, hurry, quiet fear, hoarding, and compliance theater — that precede security breaches by days or weeks.
 
----
+> *"Every cybersecurity breach has a human-state precursor. Current tools catch the breach. We catch the precursor."*
 
-## Architecture
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
+[![Node 18+](https://img.shields.io/badge/node-18+-green.svg)](https://nodejs.org)
 
-DriftGuard implements a three-layer detection-to-calibration architecture:
+### Deploy Instantly (free)
 
-| Layer | Name | Function |
-|-------|------|----------|
-| **Layer 3** | AI Detection | NLI classification, temporal weighting, multi-agent orchestration |
-| **Layer 2** | EI Revelation | Early warning engine, severity scoring, alert generation |
-| **Layer 1** | NI Calibration | Narrative Intelligence response delivery (content owned by framework team) |
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Naresh1401/DriftGuard)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/DriftGuard?referralCode=open)
 
-### Core Principles
-
-- **No individual profiling.** Every detection is organizational-level. No employee is named, targeted, or singled out.
-- **Confidence + explanation required.** Every alert includes a confidence score and plain language explanation.
-- **Human review for Critical alerts.** Governance gate enforced in code — not convention.
-- **180-day maximum data retention.** Hard-coded, non-configurable.
-- **Immutable audit log.** Every system action is logged and cannot be modified or deleted.
+**Live Demo:** [https://driftguard.vercel.app](https://driftguard.vercel.app)
 
 ---
 
-## Six Drift Patterns
+## One-Click Setup
 
-| Pattern | What It Detects |
-|---------|----------------|
+### Option 1: Docker (recommended)
+
+```bash
+git clone https://github.com/user/DriftGuard.git
+cd DriftGuard
+./setup.sh
+```
+
+This starts the full stack: frontend, backend API, PostgreSQL, Grafana, and Prometheus.
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost |
+| Backend API | http://localhost:8000 |
+| API Docs (Swagger) | http://localhost:8000/docs |
+| Grafana | http://localhost:3001 (admin / driftguard) |
+| Prometheus | http://localhost:9090 |
+
+### Option 2: Local Development
+
+```bash
+git clone https://github.com/user/DriftGuard.git
+cd DriftGuard
+./setup.sh local
+```
+
+This creates a Python venv, installs Node modules, and starts both dev servers:
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:8000 |
+| API Docs (Swagger) | http://localhost:8000/docs |
+
+### Option 3: Manual Setup
+
+```bash
+# Backend
+cd DriftGuard/backend
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+
+# Frontend (separate terminal)
+cd DriftGuard/frontend
+npm install && npm run dev
+```
+
+---
+
+## What It Does
+
+Current cybersecurity tools detect breaches at **Stage 4–5** — behavior and system impact. Nobody reads **Stage 1–2** — the human-state drift that precedes the breach:
+
+| Drift Pattern | What It Detects |
+|---------------|----------------|
 | **Fatigue** | Sustained workload reducing vigilance — the person isn't negligent, they're exhausted |
 | **Overconfidence** | Accumulated expertise bypassing safety protocols |
 | **Hurry** | Deadline pressure compressing validation into formality |
@@ -35,7 +82,7 @@ DriftGuard implements a three-layer detection-to-calibration architecture:
 | **Hoarding** | Access and authority accumulating beyond role requirements |
 | **Compliance Theater** | High audit scores coexisting with elevated breach indicators |
 
-## NIST SP 800-53 Control Mapping
+Each pattern maps to **NIST SP 800-53** controls:
 
 | Control | Title | Vulnerable Patterns |
 |---------|-------|-------------------|
@@ -47,130 +94,61 @@ DriftGuard implements a three-layer detection-to-calibration architecture:
 
 ---
 
-## Project Structure
+## Architecture
 
 ```
-DriftGuard/
-├── backend/
-│   ├── main.py                    # FastAPI application entry point
-│   ├── config/settings.py         # Pydantic Settings configuration
-│   ├── models/__init__.py         # All Pydantic data models
-│   ├── db/database.py             # SQLAlchemy async ORM
-│   ├── core/
-│   │   ├── drift_patterns.py      # 6 immutable drift pattern definitions
-│   │   ├── nist_mapping.py        # NIST SP 800-53 control mappings
-│   │   ├── severity.py            # Temporal weighting & severity scoring
-│   │   └── ethical_guardrails.py  # PII anonymization, transparency, retention
-│   ├── pipeline/
-│   │   ├── signal_ingestion.py    # Signal intake & anonymization
-│   │   ├── classifier.py          # NLI-based drift classification
-│   │   ├── temporal_weighting.py  # Exponential decay & acceleration
-│   │   ├── agents/__init__.py     # Per-pattern LangGraph agents
-│   │   └── orchestrator.py        # LangGraph state graph orchestration
-│   ├── engine/
-│   │   └── early_warning.py       # Watch/Warning/Critical alert engine
-│   ├── calibration/
-│   │   ├── content_api.py         # NI content library API
-│   │   ├── rag_retrieval.py       # FAISS/Qdrant vector search
-│   │   └── delivery.py            # Multi-channel delivery service
-│   ├── domain/
-│   │   ├── adapter.py             # YAML-driven domain adapter
-│   │   └── configs/               # 6 industry vertical YAML configs
-│   ├── governance/
-│   │   └── approval_gates.py      # 3 governance gates + audit logger
-│   ├── integrations/
-│   │   ├── splunk.py              # Splunk SIEM connector
-│   │   ├── sentinel.py            # Microsoft Sentinel connector
-│   │   ├── cloudtrail.py          # AWS CloudTrail connector
-│   │   ├── google_workspace.py    # Google Workspace connector
-│   │   └── epic_emr.py            # Epic EMR FHIR connector
-│   ├── api/
-│   │   ├── middleware/auth.py     # JWT + SSO authentication
-│   │   └── routes/                # 8 API route modules
-│   └── tests/                     # pytest test suite
-├── frontend/
-│   ├── src/
-│   │   ├── App.tsx                # React router & layout
-│   │   ├── pages/
-│   │   │   ├── Dashboard.tsx      # Health score, trends, recent alerts
-│   │   │   ├── AlertCenter.tsx    # Real-time alert feed with actions
-│   │   │   ├── DriftMap.tsx       # Dept × pattern heatmap
-│   │   │   ├── Calibration.tsx    # NI response library management
-│   │   │   ├── Domains.tsx        # Domain config viewer
-│   │   │   ├── Governance.tsx     # Approval gates & audit log
-│   │   │   ├── Reports.tsx        # Weekly, NIST, board summaries
-│   │   │   └── Onboarding.tsx     # 3-step setup wizard
-│   │   └── components/
-│   │       ├── Layout.tsx         # Sidebar nav + ethical banner
-│   │       └── Shared.tsx         # Reusable UI components
-│   └── package.json
-├── ni_content/
-│   ├── manifest.json              # Content library manifest
-│   └── placeholders/              # Pre-approved placeholder responses
-├── monitoring/
-│   ├── otel-collector.yaml        # OpenTelemetry config
-│   ├── prometheus.yml             # Prometheus scrape config
-│   └── grafana/                   # Grafana dashboards & provisioning
-├── docker-compose.yml             # Full stack deployment
-├── Dockerfile.backend
-├── Dockerfile.frontend
-└── nginx.conf
+Signals → Ingestion → Temporal Weighting → 6 Pattern Agents → Aggregation → Alerts
+              ↓                                                       ↓
+        PII Anonymization                                    NI Calibration
+        (ethical guardrail)                                  (response delivery)
 ```
+
+**8-node LangGraph pipeline** with per-pattern detection agents, fan-out/fan-in orchestration, and NLI classification (DeBERTa-v3 + rule-based fallback).
+
+### Three Layers
+
+| Layer | Name | Function |
+|-------|------|----------|
+| **Layer 3** | AI Detection | NLI classification, temporal weighting, multi-agent orchestration |
+| **Layer 2** | EI Revelation | Early warning engine, severity scoring, alert generation |
+| **Layer 1** | NI Calibration | Nature's Intelligence response delivery (content owned by framework team) |
 
 ---
 
-## Quick Start
+## Integration Connectors
 
-### Development (Local)
+DriftGuard integrates with existing SIEM and EDR stacks — it doesn't replace your current tools, it adds the human layer they're architecturally blind to.
 
+| Connector | Platform | Protocol |
+|-----------|----------|----------|
+| Splunk | Splunk Enterprise/Cloud | REST API |
+| Sentinel | Microsoft Sentinel | Azure Log Analytics KQL |
+| CloudTrail | AWS | boto3 SDK |
+| Google Workspace | Google Admin | Reports API |
+| Epic EMR | Epic EHR | FHIR R4 AuditEvent |
+
+### Universal SDK
+
+Any application can connect via the SDK or webhook API:
+
+**Python:**
+```python
+from sdk.client import DriftGuardClient
+
+client = DriftGuardClient(
+    api_url="http://localhost:8000",
+    app_name="my-app",
+    domain="enterprise"
+)
+client.send_signal("access_log", "auth-service", {"login_count": 150})
+```
+
+**Webhook:**
 ```bash
-# Backend
-cd DriftGuard/backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-cp ../.env.example ../.env
-uvicorn main:app --reload --port 8000
-
-# Frontend (separate terminal)
-cd DriftGuard/frontend
-npm install
-npm run dev
+curl -X POST http://localhost:8000/api/v1/integrations/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"event_type": "security_alert", "source_app": "my-siem", "payload": {"severity": "high"}}'
 ```
-
-### Production (Docker Compose)
-
-```bash
-cd DriftGuard
-docker compose up --build -d
-```
-
-Services will be available at:
-- **Frontend:** http://localhost
-- **Backend API:** http://localhost:8000
-- **Grafana:** http://localhost:3001 (admin/driftguard)
-- **Prometheus:** http://localhost:9090
-
----
-
-## Role-Based Views
-
-| Role | Dashboard View |
-|------|---------------|
-| **Compliance Officer** | Plain language summaries, organizational health score, trend reports |
-| **CISO** | Full technical depth — NIST controls, confidence scores, risk matrices |
-| **NI Architect** | Calibration content management, response effectiveness metrics |
-| **Administrator** | Full system access, domain configuration, governance gates |
-
----
-
-## Governance Gates
-
-Three hard-coded governance gates enforced as system boundaries:
-
-1. **NI Response Approval** — Every calibration response must be approved by the framework team before delivery
-2. **NIST Mapping Validation** — Control mappings require validation before reports
-3. **Critical Alert Human Review** — Critical alerts are held pending human approval. No exceptions.
 
 ---
 
@@ -185,33 +163,56 @@ Pre-built YAML configurations for 6 industry verticals:
 - **Education** — FERPA, research data protection, IRB compliance
 - **Enterprise** — General NIST CSF / ISO 27001 alignment
 
-Custom domains can be added by uploading a YAML configuration file.
+Add your own by uploading a YAML configuration file through the API or dashboard.
 
 ---
 
-## Integration Connectors
+## Ethical Boundaries (non-negotiable)
 
-| Connector | Platform | Protocol |
-|-----------|----------|----------|
-| Splunk | Splunk Enterprise/Cloud | REST API |
-| Sentinel | Microsoft Sentinel | Azure Log Analytics KQL |
-| CloudTrail | AWS | boto3 SDK |
-| Google Workspace | Google Admin | Reports API |
-| Epic EMR | Epic EHR | FHIR R4 AuditEvent |
+These are hard-coded in the system — not configurable, not bypassable:
+
+- **No individual profiling** — detections are organizational-level only
+- **PII anonymized at ingestion** — employee identifiers hashed before storage or classification
+- **180-day maximum data retention** — hard-coded, cannot be extended
+- **Human review for Critical alerts** — no automated escalation without human approval
+- **Confidence + explanation required** — no alert without both
+- **Immutable audit trail** — every action logged, no modification or deletion possible
+- **Permanent ethical banner** — every screen displays the constraint notice
 
 ---
 
-## Ethical Framework
+## Project Structure
 
-DriftGuard is built on non-negotiable ethical constraints:
-
-- **PII anonymization at ingestion** — Personal identifiers are hashed before storage
-- **Organizational-level detection only** — Patterns describe team/department conditions, not individuals
-- **Permanent ethical banner** — Every screen displays the ethical constraint notice
-- **Confidence and explanation required** — No alert without both
-- **Human override for Critical** — Code-enforced, not policy-enforced
-- **180-day maximum retention** — Data older than 180 days is automatically purged
-- **Immutable audit trail** — Every action logged, no modification or deletion possible
+```
+DriftGuard/
+├── backend/
+│   ├── main.py                    # FastAPI entry point
+│   ├── config/settings.py         # Pydantic Settings
+│   ├── models/                    # Data models
+│   ├── core/
+│   │   ├── drift_patterns.py      # 6 drift pattern definitions
+│   │   ├── nist_mapping.py        # NIST SP 800-53 mappings
+│   │   ├── severity.py            # Severity scoring
+│   │   └── ethical_guardrails.py  # PII anonymization & guardrails
+│   ├── pipeline/
+│   │   ├── orchestrator.py        # LangGraph state graph
+│   │   ├── classifier.py          # NLI + rule-based classification
+│   │   ├── agents/                # Per-pattern detection agents
+│   │   └── signal_ingestion.py    # Signal intake & anonymization
+│   ├── calibration/
+│   │   ├── content_api.py         # NI response library
+│   │   ├── rag_retrieval.py       # FAISS/Qdrant vector search
+│   │   └── delivery.py            # Multi-channel delivery
+│   ├── integrations/              # SIEM/EDR/EMR connectors
+│   ├── sdk/                       # Python & TypeScript SDK
+│   └── api/routes/                # REST API endpoints
+├── frontend/                      # React + TypeScript + Tailwind
+├── ni_content/                    # NI calibration responses
+├── monitoring/                    # Grafana, Prometheus, OTel
+├── docker-compose.yml
+├── setup.sh                       # One-click setup script
+└── LICENSE                        # MIT
+```
 
 ---
 
@@ -219,34 +220,40 @@ DriftGuard is built on non-negotiable ethical constraints:
 
 ```bash
 cd DriftGuard/backend
+source venv/bin/activate
 pytest -v
 ```
 
-Test coverage includes:
-- Ethical guardrail enforcement
-- Drift pattern immutability and completeness
-- NIST control cross-referencing
-- Severity scoring and temporal weighting
-- Signal ingestion and PII anonymization
-- NLI classifier rule-based fallback
-- API endpoint validation
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. Key areas:
+
+- **NI Response Library** — Write calibration responses (no code required)
+- **Domain Configs** — Add YAML configs for new industries
+- **Integration Connectors** — Add SIEM/EDR platform connectors
+- **Test Coverage** — Expand the test suite
 
 ---
 
 ## Research Foundation
 
-DriftGuard is based on the research papers:
-- **"Beyond the Breach: A Three-Layer Architecture for Human-State Drift Detection in Cybersecurity"**
-- **"The Human Firewall: Detecting Behavioral Drift Before the Breach"**
+Based on the research papers included in this repository:
 
-Both papers are available in this repository.
+- *"Beyond the Breach: A Three-Layer Architecture for Human-State Drift Detection in Cybersecurity"*
+- *"The Human Firewall: Detecting Behavioral Drift Before the Breach"*
+
+---
+
+## Team
+
+- **Naresh Sampangi** — Engineering
+- **Sumeet Agarwal** — Senior AI Engineer
+- **Dr. Anil K. Agarwal** — Clinical Seat + Healthcare Market
 
 ---
 
 ## License
 
-Proprietary — All rights reserved.
-
-## Authors
-
-Naresh — CS Breach Research Project (DS-1201)
+[MIT](LICENSE) — use it, fork it, build on it.
