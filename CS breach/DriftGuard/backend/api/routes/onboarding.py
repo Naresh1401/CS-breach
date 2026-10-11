@@ -12,6 +12,30 @@ from models import User
 router = APIRouter(prefix="/onboarding", tags=["Onboarding"])
 
 
+# ── Onboarding Status ────────────────────────────────
+
+@router.get("/status")
+async def get_onboarding_status():
+    """Get current onboarding status — check if domain and connectors are configured."""
+    from main import app_state
+
+    has_domain = bool(app_state.domain_registry.get_domain("enterprise"))
+    has_signals = False
+    for scope_alerts in app_state.early_warning._active_alerts.values():
+        if scope_alerts:
+            has_signals = True
+            break
+
+    steps = [
+        {"step": 1, "title": "Select Domain", "description": "Choose your organization type", "completed": has_domain},
+        {"step": 2, "title": "Connect Sources", "description": "Set up signal ingestion", "completed": has_signals},
+        {"step": 3, "title": "Configure Alerts", "description": "Set sensitivity and delivery", "completed": has_domain},
+    ]
+    completed = all(s["completed"] for s in steps)
+
+    return {"steps": steps, "completed": completed}
+
+
 class OnboardingStep1(BaseModel):
     """Step 1: Select domain or upload custom YAML."""
     domain: str  # healthcare, finance, government, retail, education, enterprise, custom
@@ -85,6 +109,81 @@ async def get_available_domains():
                 "icon": "🏢",
             },
         ],
+        "app_types": [
+            {
+                "id": "web_application",
+                "name": "Web Application",
+                "description": "Any web app (Django, Flask, Express, Rails, Spring, Next.js, etc.)",
+                "icon": "🌐",
+            },
+            {
+                "id": "mobile_backend",
+                "name": "Mobile Backend",
+                "description": "iOS, Android, React Native, Flutter backend APIs.",
+                "icon": "📱",
+            },
+            {
+                "id": "microservices",
+                "name": "Microservices",
+                "description": "Kubernetes, Docker, service mesh environments.",
+                "icon": "⚙️",
+            },
+            {
+                "id": "saas_platform",
+                "name": "SaaS Platform",
+                "description": "Multi-tenant B2B/B2C applications, API platforms.",
+                "icon": "☁️",
+            },
+            {
+                "id": "iot_platform",
+                "name": "IoT / ICS / SCADA",
+                "description": "Industrial control, smart devices, embedded systems.",
+                "icon": "🔌",
+            },
+            {
+                "id": "custom",
+                "name": "Custom Application",
+                "description": "Upload a YAML config or use the SDK for any application type.",
+                "icon": "🔧",
+            },
+        ],
+        "integration_methods": [
+            {
+                "id": "sdk",
+                "name": "DriftGuard SDK",
+                "description": "Drop-in Python middleware for ASGI (FastAPI, Django 3+) or WSGI (Flask, Django 2.x) apps.",
+            },
+            {
+                "id": "webhook",
+                "name": "Universal Webhook",
+                "description": "POST events from any app to /api/v1/integrations/webhook — auto-classified.",
+            },
+            {
+                "id": "connector",
+                "name": "Platform Connector",
+                "description": "Pre-built connectors for Splunk, Sentinel, CloudTrail, Google Workspace, Epic EMR.",
+            },
+            {
+                "id": "github_webhook",
+                "name": "GitHub Integration",
+                "description": "Auto-ingest GitHub events (push, PR, deployments, security alerts).",
+            },
+            {
+                "id": "jira_webhook",
+                "name": "Jira Integration",
+                "description": "Auto-ingest Jira events (issue changes, workflow transitions).",
+            },
+            {
+                "id": "pagerduty_webhook",
+                "name": "PagerDuty Integration",
+                "description": "Auto-ingest PagerDuty events (incidents, escalations).",
+            },
+            {
+                "id": "slack_webhook",
+                "name": "Slack Integration",
+                "description": "Monitor Slack communication patterns for drift signals.",
+            },
+        ],
         "custom_upload_available": True,
     }
 
@@ -100,6 +199,13 @@ async def get_available_connectors():
             {"id": "google_workspace", "name": "Google Workspace", "description": "Google admin logs and activity"},
             {"id": "epic_emr", "name": "Epic EMR", "description": "Epic electronic medical records integration"},
             {"id": "file_upload", "name": "Upload Log File", "description": "Upload a sample log for prototype mode"},
+            {"id": "webhook", "name": "Universal Webhook", "description": "POST events from any app — auto-classified by DriftGuard"},
+            {"id": "sdk_asgi", "name": "SDK: ASGI Middleware", "description": "Drop-in for FastAPI, Starlette, Django 3+, Quart"},
+            {"id": "sdk_wsgi", "name": "SDK: WSGI Middleware", "description": "Drop-in for Flask, Django 2.x, Bottle, Pyramid"},
+            {"id": "github", "name": "GitHub", "description": "Auto-ingest GitHub push, PR, deployment, security events"},
+            {"id": "jira", "name": "Jira", "description": "Auto-ingest Jira issue and workflow events"},
+            {"id": "pagerduty", "name": "PagerDuty", "description": "Auto-ingest PagerDuty incident events"},
+            {"id": "slack", "name": "Slack", "description": "Monitor Slack communication patterns"},
         ],
     }
 

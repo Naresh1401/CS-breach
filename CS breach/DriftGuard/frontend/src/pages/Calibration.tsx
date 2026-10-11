@@ -3,7 +3,7 @@ import { api } from '../api'
 import { useAuth } from '../auth'
 import { LoadingSpinner, PatternTag } from '../components/Shared'
 import type { CalibrationResponse } from '../types'
-import { CheckCircle, XCircle, BookOpen, Eye } from 'lucide-react'
+import { CheckCircle, XCircle, BookOpen, Eye, Lock } from 'lucide-react'
 import clsx from 'clsx'
 
 const DEMO_RESPONSES: CalibrationResponse[] = [
@@ -46,20 +46,22 @@ const DEMO_RESPONSES: CalibrationResponse[] = [
 ]
 
 export default function Calibration() {
-  const { role } = useAuth()
+  const { can } = useAuth()
   const [responses, setResponses] = useState<CalibrationResponse[]>(DEMO_RESPONSES)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       setLoading(true)
+      setError(null)
       try {
         const data = await api.getCalibrationResponses()
         if (!cancelled) setResponses(data)
       } catch {
-        // demo data
+        if (!cancelled) setError('Failed to load calibration responses. Showing demo data.')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -68,7 +70,17 @@ export default function Calibration() {
     return () => { cancelled = true }
   }, [])
 
-  const canApprove = role === 'ni_architect' || role === 'admin'
+  const canApprove = can('approve_calibration')
+
+  if (!can('view_calibration')) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <Lock size={48} className="mb-4" />
+        <h2 className="text-lg font-semibold text-gray-600">Access Restricted</h2>
+        <p className="text-sm mt-1">NI Calibration requires a non-viewer role.</p>
+      </div>
+    )
+  }
 
   async function handleApprove(id: string) {
     try { await api.approveCalibration(id) } catch { /* offline */ }
@@ -88,6 +100,11 @@ export default function Calibration() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+          {error}
+        </div>
+      )}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">NI Calibration</h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -96,7 +113,7 @@ export default function Calibration() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Total Responses" value={responses.length} icon={<BookOpen size={18} />} />
         <StatCard
           label="Pending Approval"
@@ -123,7 +140,7 @@ export default function Calibration() {
             )}
             onClick={() => setExpandedId(expandedId === resp.response_id ? null : resp.response_id)}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <PatternTag pattern={resp.drift_pattern} />
               <span className="text-xs text-gray-500">
                 Severity {resp.severity_range[0]}-{resp.severity_range[1]}

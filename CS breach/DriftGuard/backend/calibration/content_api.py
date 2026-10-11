@@ -66,13 +66,14 @@ class NI_ContentAPI:
         for json_file in directory.glob("*.json"):
             with open(json_file, "r") as f:
                 entries = json.load(f)
-                if isinstance(entries, list):
-                    for entry in entries:
-                        resp = CalibrationResponse(**entry)
-                        self._responses[str(resp.id)] = resp
-                        count += 1
-                elif isinstance(entries, dict):
-                    resp = CalibrationResponse(**entries)
+                items = entries if isinstance(entries, list) else [entries]
+                for entry in items:
+                    if not isinstance(entry, dict):
+                        continue
+                    # Only parse entries that look like CalibrationResponse
+                    if "drift_pattern" not in entry or "response_text" not in entry:
+                        continue
+                    resp = CalibrationResponse(**entry)
                     self._responses[str(resp.id)] = resp
                     count += 1
 

@@ -13,12 +13,14 @@ venv/
 # Node
 node_modules/
 frontend/dist/
-.DS_Store
+frontend/.vite/
 
 # IDE
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
 
 # Database
 *.db
@@ -27,6 +29,19 @@ frontend/dist/
 # Docker
 .docker/
 
+# ML Model Cache
+.cache/
+*.onnx
+*.bin
+*.pt
+
 # OS
-Thumbs.db
 .DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+.vercel
+.env*.local
+backend/data/

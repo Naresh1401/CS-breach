@@ -41,6 +41,8 @@ class AppState:
             CriticalAlertReviewGate,
             AuditLogger,
         )
+        from integrations.app_adapter import UniversalAppRegistry
+        from db.persistence import PersistenceService
 
         # Core pipeline
         self.pipeline = DriftGuardPipeline(
@@ -49,6 +51,9 @@ class AppState:
 
         # Early warning engine
         self.early_warning = EarlyWarningEngine()
+
+        # Database persistence
+        self.persistence = PersistenceService()
 
         # NI Calibration
         self.content_api = NI_ContentAPI(
@@ -67,6 +72,9 @@ class AppState:
         self.domain_registry = DomainAdapterRegistry(
             configs_dir=str(Path(__file__).parent / "domain" / "configs")
         )
+
+        # Universal app registry — allows ANY app to register and configure
+        self.app_registry = UniversalAppRegistry()
 
         # Governance gates
         self.ni_approval_gate = NI_ResponseApprovalGate()
@@ -95,10 +103,23 @@ async def lifespan(app: FastAPI):
     ni_count = app_state.content_api.load_responses()
     logger.info(f"Loaded {ni_count} NI calibration responses")
 
+    # Load universal app configurations (if directory exists)
+    app_configs_dir = Path(__file__).parent / "integrations" / "app_configs"
+    if app_configs_dir.exists():
+        app_count = app_state.app_registry.load_builtin_app_configs(str(app_configs_dir))
+        logger.info(f"Loaded {app_count} universal app configurations")
+
     # Initialize database
-    from db.database import init_db
+    from db.database import init_db, seed_default_accounts
     await init_db()
     logger.info("Database initialized")
+
+    # Seed default demo accounts (idempotent — skips existing)
+    seeded = await seed_default_accounts()
+    if seeded:
+        logger.info(f"Seeded {seeded} default demo accounts")
+    else:
+        logger.info("Default demo accounts already exist")
 
     logger.info("DriftGuard is ready.")
     logger.info(f"Ethical banner: {ETHICAL_BANNER}")
@@ -122,14 +143,46 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
+# CORS — configurable for any application
+_cors_origins = settings.cors_origins.split(",") if hasattr(settings, "cors_origins") and settings.cors_origins else [
+    "http://localhost:5173", "http://localhost:3000", "http://localhost:3001",
+    "https://driftguard-eight.vercel.app", "https://driftguard.vercel.app",
+    "https://driftguard-naresh1401.vercel.app", "https://driftguard-api.onrender.com",
+    "https://driftguard-api-p0l5.onrender.com",
+    "https://driftguard-api-a0vq.onrender.com",
+    "https://driftguard-api-mbdj.onrender.com",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=_cors_origins if _cors_origins != ["*"] else [],
+    allow_origin_regex=r".*" if _cors_origins == ["*"] else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Security headers middleware ──────────────────────
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next):
+        response: Response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if settings.app_env.value != "development":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+
 
 # ── Register Routes ──────────────────────────────────
 
@@ -141,8 +194,19 @@ from api.routes.domains import router as domains_router
 from api.routes.governance import router as governance_router
 from api.routes.reports import router as reports_router
 from api.routes.onboarding import router as onboarding_router
+from api.routes.integrations import router as integrations_router
+from api.routes.scanner import router as scanner_router
+from api.routes.drift_map import router as drift_map_router
+from api.routes.threat_intel import router as threat_intel_router
+from api.routes.scans import router as scans_router
+from api.routes.auth_routes import router as auth_router
+from api.routes.convenience import router as convenience_router
+from api.routes.risk_forecast import router as risk_forecast_router
+from api.routes.live_stream import router as live_stream_router
+from api.routes.ai_breach import router as ai_breach_router
 
 app.include_router(health_router, prefix=settings.api_prefix)
+app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(signals_router, prefix=settings.api_prefix)
 app.include_router(alerts_router, prefix=settings.api_prefix)
 app.include_router(calibration_router, prefix=settings.api_prefix)
@@ -150,13 +214,82 @@ app.include_router(domains_router, prefix=settings.api_prefix)
 app.include_router(governance_router, prefix=settings.api_prefix)
 app.include_router(reports_router, prefix=settings.api_prefix)
 app.include_router(onboarding_router, prefix=settings.api_prefix)
+app.include_router(integrations_router, prefix=settings.api_prefix)
+app.include_router(scanner_router, prefix=settings.api_prefix)
+app.include_router(drift_map_router, prefix=settings.api_prefix)
+app.include_router(threat_intel_router, prefix=settings.api_prefix)
+app.include_router(scans_router, prefix=settings.api_prefix)
+app.include_router(convenience_router, prefix=settings.api_prefix)
+app.include_router(risk_forecast_router, prefix=settings.api_prefix)
+app.include_router(live_stream_router, prefix=settings.api_prefix)
+app.include_router(ai_breach_router, prefix=settings.api_prefix)
 
 
 @app.get("/")
 async def root():
+    import os as _os
+    _dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+    if _dist.exists() and _os.environ.get("ENVIRONMENT") == "production":
+        from fastapi.responses import FileResponse
+        return FileResponse(str(_dist / "index.html"))
     return {
         "service": "DriftGuard",
         "version": "1.0.0",
+        "description": "Universal cybersecurity breach prevention layer for any application",
         "ethical_statement": ETHICAL_BANNER,
         "status": "operational",
+        "integration_methods": {
+            "sdk_python": "pip install driftguard-sdk → from sdk import DriftGuardClient",
+            "sdk_javascript": "import { DriftGuardClient } from 'driftguard-sdk'",
+            "asgi_middleware": "from sdk.middleware import DriftGuardASGIMiddleware",
+            "wsgi_middleware": "from sdk.middleware import DriftGuardWSGIMiddleware",
+            "express_middleware": "import { driftGuardExpressMiddleware } from 'driftguard-sdk'",
+            "universal_webhook": "POST /api/v1/integrations/webhook",
+            "platform_webhooks": {
+                "github": "POST /api/v1/integrations/webhook/github",
+                "jira": "POST /api/v1/integrations/webhook/jira",
+                "pagerduty": "POST /api/v1/integrations/webhook/pagerduty",
+                "slack": "POST /api/v1/integrations/webhook/slack",
+            },
+            "connectors": ["splunk", "sentinel", "cloudtrail", "google_workspace", "epic_emr"],
+        },
+        "docs": "/docs",
     }
+
+
+# ── Serve frontend static files in production ────────
+import os
+
+_frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+# Always-on: serve the embeddable browser collector script. Works in
+# both dev and prod so any embedding host can pull it from the API.
+_COLLECTOR_JS = Path(__file__).resolve().parent / "sdk" / "driftguard-collector.js"
+
+@app.get("/static/driftguard-collector.js", include_in_schema=False)
+async def serve_collector_js():
+    from fastapi.responses import FileResponse
+    return FileResponse(
+        str(_COLLECTOR_JS),
+        media_type="application/javascript",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+if _frontend_dist.exists() and os.environ.get("ENVIRONMENT") == "production":
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    # Serve static assets (JS, CSS, images)
+    app.mount("/assets", StaticFiles(directory=str(_frontend_dist / "assets")), name="static-assets")
+
+    # Catch-all: serve index.html for SPA routes
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # If it's a file that exists in dist, serve it
+        file_path = _frontend_dist / full_path
+        if full_path and file_path.exists() and file_path.is_file():
+            return FileResponse(str(file_path))
+        # Otherwise serve index.html for client-side routing
+        return FileResponse(str(_frontend_dist / "index.html"))
+
+    logger.info(f"Serving frontend from {_frontend_dist}")

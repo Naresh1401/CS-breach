@@ -40,20 +40,22 @@ const DEMO_ALERTS: Alert[] = [
 ]
 
 export default function AlertCenter() {
-  const { role } = useAuth()
+  const { role, can } = useAuth()
   const [alerts, setAlerts] = useState<Alert[]>(DEMO_ALERTS)
   const [filter, setFilter] = useState<AlertLevel | 'all'>('all')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       setLoading(true)
+      setError(null)
       try {
         const data = await api.getAlerts({ limit: '50' })
         if (!cancelled) setAlerts(data.alerts)
       } catch {
-        // demo data
+        if (!cancelled) setError('Failed to load alerts. Showing demo data.')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -84,10 +86,25 @@ export default function AlertCenter() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {error && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800 flex items-center gap-2">
+          <Filter size={16} className="shrink-0" /> {error}
+        </div>
+      )}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Alert Center</h1>
-          <p className="text-sm text-gray-500 mt-1">Real-time drift alerts with action controls</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {role === 'ciso'
+              ? 'Technical alert analysis with NIST controls and recommended actions'
+              : role === 'admin'
+                ? 'Full alert management — acknowledge, resolve, and monitor all drift signals'
+                : role === 'compliance_officer'
+                  ? 'Drift alerts requiring compliance review and remediation'
+                  : role === 'ni_architect'
+                    ? 'Pattern alerts informing calibration priorities'
+                    : 'Real-time organizational drift alerts (read-only)'}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Filter size={16} className="text-gray-400" />
@@ -128,7 +145,7 @@ export default function AlertCenter() {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                     <PatternTag pattern={alert.drift_pattern} />
                     <span className="text-xs text-gray-500">{alert.department}</span>
                     <span className="text-xs text-gray-400">
@@ -144,10 +161,20 @@ export default function AlertCenter() {
                       <p><strong>Recommended:</strong> {alert.recommended_action}</p>
                     </div>
                   )}
+                  {role === 'compliance_officer' && (
+                    <div className="mt-2 text-xs text-blue-600 bg-blue-50 rounded p-2">
+                      <p><strong>Recommended Action:</strong> {alert.recommended_action}</p>
+                    </div>
+                  )}
+                  {role === 'ni_architect' && (
+                    <div className="mt-2 text-xs text-indigo-600 bg-indigo-50 rounded p-2">
+                      <p><strong>Calibration relevance:</strong> Pattern "{alert.drift_pattern.replace(/_/g, ' ')}" at severity {alert.severity}/5 — check NI response coverage</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-2 shrink-0">
-                  {!alert.acknowledged && !alert.resolved && (
+                  {!alert.acknowledged && !alert.resolved && can('acknowledge_alert') && (
                     <button
                       onClick={() => handleAcknowledge(alert.alert_id)}
                       className="btn-secondary flex items-center gap-1.5 text-xs"
@@ -155,7 +182,7 @@ export default function AlertCenter() {
                       <Eye size={14} /> Acknowledge
                     </button>
                   )}
-                  {!alert.resolved && (
+                  {!alert.resolved && can('resolve_alert') && (
                     <button
                       onClick={() => handleResolve(alert.alert_id)}
                       className="btn-primary flex items-center gap-1.5 text-xs"
@@ -165,6 +192,9 @@ export default function AlertCenter() {
                   )}
                   {alert.resolved && (
                     <span className="text-xs text-green-600 font-medium">Resolved</span>
+                  )}
+                  {!can('acknowledge_alert') && !alert.resolved && (
+                    <span className="text-xs text-gray-400 italic">View only</span>
                   )}
                 </div>
               </div>

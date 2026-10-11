@@ -4,6 +4,7 @@ import { useAuth } from '../auth'
 import { CheckCircle, Globe, Shield, Zap } from 'lucide-react'
 import clsx from 'clsx'
 import type { UserRole } from '../types'
+import { api } from '../api'
 
 const STEPS = [
   {
@@ -59,6 +60,13 @@ export default function Onboarding() {
     if (step < 2) {
       setStep(step + 1)
     } else {
+      // Save onboarding to backend
+      api.completeOnboarding({
+        domain: selectedDomain || 'enterprise',
+        step1: { domain: selectedDomain || 'enterprise' },
+        step2: { connectors: selectedConnectors.map(c => ({ connector_type: c, config: {} })), sample_file_mode: false },
+        step3: { alert_sensitivity: 'balanced', priority_nist_controls: [], response_delivery: ['dashboard'] },
+      }).catch(() => { /* proceed even if save fails */ })
       if (selectedRole) setRole(selectedRole)
       navigate('/')
     }
@@ -85,12 +93,12 @@ export default function Onboarding() {
         </div>
 
         {/* Step indicator */}
-        <div className="flex items-center justify-center gap-4 mb-8">
+        <div className="flex items-center justify-center gap-2 sm:gap-4 mb-8">
           {STEPS.map((s, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div key={i} className="flex items-center gap-1 sm:gap-2">
               <div
                 className={clsx(
-                  'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold',
+                  'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0',
                   i < step
                     ? 'bg-green-500 text-white'
                     : i === step
@@ -100,10 +108,10 @@ export default function Onboarding() {
               >
                 {i < step ? <CheckCircle size={16} /> : i + 1}
               </div>
-              <span className={clsx('text-sm', i === step ? 'text-gray-900 font-medium' : 'text-gray-500')}>
+              <span className={clsx('text-xs sm:text-sm hidden sm:inline', i === step ? 'text-gray-900 font-medium' : 'text-gray-500')}>
                 {s.title}
               </span>
-              {i < 2 && <div className="w-12 h-px bg-gray-300" />}
+              {i < 2 && <div className="w-6 sm:w-12 h-px bg-gray-300" />}
             </div>
           ))}
         </div>
@@ -122,7 +130,7 @@ export default function Onboarding() {
           </div>
 
           {step === 0 && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {DOMAINS.map((d) => (
                 <button
                   key={d.id}
