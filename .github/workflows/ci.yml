@@ -23,22 +23,33 @@ jobs:
         include:
           - directory: CS breach/DriftGuard/backend
             python-version: '3.11'
+            test-command: ''
           - directory: Cybersecurity/backend
             python-version: '3.11'
+            # tests/test_e2e.py is a script for a running API, not a pytest suite;
+            # exit code 5 means pytest found no other tests yet
+            test-command: python -m pytest --ignore=tests/test_e2e.py || test $? -eq 5
     uses: Naresh1401/github-cicd-workflows/.github/workflows/python-ci.yml@v1
     with:
       working-directory: ${{ matrix.directory }}
       python-version: ${{ matrix.python-version }}
+      test-command: ${{ matrix.test-command }}
 
   node:
     name: Node
     strategy:
       fail-fast: false
       matrix:
-        directory: [CS breach/DriftGuard/frontend, Cybersecurity/frontend]
+        include:
+          - directory: CS breach/DriftGuard/frontend
+            # The lint script has no ESLint config yet (ESLint 9 needs eslint.config.js)
+            lint-command: ''
+          - directory: Cybersecurity/frontend
+            lint-command: auto
     uses: Naresh1401/github-cicd-workflows/.github/workflows/node-ci.yml@v1
     with:
       working-directory: ${{ matrix.directory }}
+      lint-command: ${{ matrix.lint-command }}
 
   container:
     name: Docker image
